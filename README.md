@@ -47,6 +47,23 @@ You can customize the default click behavior (e.g. to always open in a floating 
 
 Base Board uses manual drag order so cards remain exactly where you place them. This order is stored in each note's `kanban_order` property and overrides the native Bases **Sort by** setting.
 
+### Default Card Properties (`newItemProperties`)
+
+You can set board-specific default frontmatter properties for new cards created from **"+ Add card"** using `newItemProperties` in your `.base` file:
+
+```yaml
+views:
+  - type: kanban
+    name: Frontend Board
+    newItemFolder: Tasks
+    newItemTemplate: Templates/task.md
+    newItemProperties:
+      team: frontend
+      category: alpha
+```
+
+This ensures new cards automatically receive required frontmatter fields, keeping them visible on filtered boards.
+
 ## Installation
 
 ### From Obsidian Community Plugins

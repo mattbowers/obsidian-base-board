@@ -649,6 +649,15 @@ export class CardManager {
     }
 
     const overrides = (fm: Record<string, unknown>) => {
+      const newItemProps = this.view.config?.get("newItemProperties");
+      if (newItemProps && typeof newItemProps === "object") {
+        const props = newItemProps as Record<string, unknown>;
+        for (const k of Object.keys(props)) {
+          if (k !== "__proto__" && k !== "constructor") {
+            fm[k] = props[k];
+          }
+        }
+      }
       fm[groupByProp] = columnName;
       fm[ORDER_PROPERTY] = targetOrder;
     };
