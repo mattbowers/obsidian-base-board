@@ -96,10 +96,18 @@ export class ColumnManager {
     });
     setIcon(dragHandle, "grip-vertical");
 
-    const collapseBtn = headerEl.createEl("button", {
+    headerEl.addEventListener("click", (e: MouseEvent) => {
+      if (isCollapsed) {
+        e.stopPropagation();
+        this.view.toggleColumnCollapsed(columnName);
+      }
+    });
+
+    const collapseBtn = headerEl.createDiv({
       cls: "base-board-column-collapse-btn",
       attr: {
-        type: "button",
+        role: "button",
+        tabindex: "0",
         "aria-label": isCollapsed ? "Expand column" : "Collapse column",
       },
     });
@@ -107,6 +115,13 @@ export class ColumnManager {
     collapseBtn.addEventListener("click", (e: MouseEvent) => {
       e.stopPropagation();
       this.view.toggleColumnCollapsed(columnName);
+    });
+    collapseBtn.addEventListener("keydown", (e: KeyboardEvent) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        e.stopPropagation();
+        this.view.toggleColumnCollapsed(columnName);
+      }
     });
 
     // Title + inline count badge
