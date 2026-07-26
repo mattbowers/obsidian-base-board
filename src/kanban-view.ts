@@ -478,10 +478,27 @@ export class KanbanView extends BasesView implements HoverParent {
   //  Rendering
   // ---------------------------------------------------------------------------
 
+  /**
+   * Ensure `file.name` is present in the view's property `order:` configuration.
+   * This guarantees that Obsidian's database engine indexes card titles for search.
+   */
+  private ensureFileNameInOrder(): void {
+    if (!this.config) return;
+    const currentOrder =
+      (this.config.get("order") as string[] | undefined) ?? [];
+    if (
+      !currentOrder.includes("file.name") &&
+      !currentOrder.includes("file.file")
+    ) {
+      this.config.set("order", ["file.name", ...currentOrder]);
+    }
+  }
+
   public cardElCache = new Map<string, HTMLElement>();
   public columnElCache = new Map<string, HTMLElement>();
 
   public render(): void {
+    this.ensureFileNameInOrder();
     this.selectedCards.clear();
     const scrollState = this.captureScrollState();
 
