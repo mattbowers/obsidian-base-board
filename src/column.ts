@@ -147,41 +147,38 @@ export class ColumnManager {
     // Spacer pushes the + button to the far right
     headerEl.createDiv({ cls: "base-board-header-spacer" });
 
-    // ---- Add card button — always visible ----
-    let addCardHeaderBtn: HTMLElement | null = null;
-    if (!isNoValue) {
-      addCardHeaderBtn = headerEl.createDiv({
-        cls: "base-board-column-add-card",
-      });
-      setIcon(addCardHeaderBtn, "plus");
-      addCardHeaderBtn.addEventListener("click", (e: MouseEvent) => {
-        e.stopPropagation();
-        const addToTop = this.view.isAddNewCardsToTop();
-        let targetOrder: OrderValue = generateOrderKey(null, null);
-        if (sorted.length > 0) {
-          const orders = sorted.map((entry) =>
-            entry.file?.path ? this.view.getFileOrder(entry.file.path) : null,
-          );
-          if (orders.every(isOrderKey)) {
-            targetOrder = addToTop
-              ? generateOrderKey(null, orders[0])
-              : generateOrderKey(orders[orders.length - 1], null);
-          } else {
-            const numericOrders = orders.filter(
-              (order): order is number => typeof order === "number",
-            );
-            targetOrder = addToTop
-              ? Math.min(...numericOrders, 0) - 1000
-              : Math.max(...numericOrders, -1000) + 1000;
-          }
-        }
-        this.view.cardManager.startInlineCardCreation(
-          addCardHeaderBtn!,
-          columnName,
-          targetOrder,
+    // ---- Add card button ----
+    const addCardHeaderBtn = headerEl.createDiv({
+      cls: "base-board-column-add-card",
+    });
+    setIcon(addCardHeaderBtn, "plus");
+    addCardHeaderBtn.addEventListener("click", (e: MouseEvent) => {
+      e.stopPropagation();
+      const addToTop = this.view.isAddNewCardsToTop();
+      let targetOrder: OrderValue = generateOrderKey(null, null);
+      if (sorted.length > 0) {
+        const orders = sorted.map((entry) =>
+          entry.file?.path ? this.view.getFileOrder(entry.file.path) : null,
         );
-      });
-    }
+        if (orders.every(isOrderKey)) {
+          targetOrder = addToTop
+            ? generateOrderKey(null, orders[0])
+            : generateOrderKey(orders[orders.length - 1], null);
+        } else {
+          const numericOrders = orders.filter(
+            (order): order is number => typeof order === "number",
+          );
+          targetOrder = addToTop
+            ? Math.min(...numericOrders, 0) - 1000
+            : Math.max(...numericOrders, -1000) + 1000;
+        }
+      }
+      this.view.cardManager.startInlineCardCreation(
+        addCardHeaderBtn,
+        columnName,
+        targetOrder,
+      );
+    });
 
     // ---- Column menu button ----
     let menuBtn: HTMLElement | null = null;
