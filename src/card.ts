@@ -169,27 +169,7 @@ export class CardManager {
           return;
         }
 
-        const openBehavior = this.view.getCardOpenBehavior();
-        if (openBehavior === "split") {
-          if (
-            this.view.detailLeaf &&
-            this.view.isLeafAttached(this.view.detailLeaf)
-          ) {
-            void this.view.detailLeaf.openFile(file);
-          } else {
-            this.view.detailLeaf = this.view.app.workspace.getLeaf(
-              "split",
-              "vertical",
-            );
-            void this.view.detailLeaf.openFile(file);
-          }
-        } else if (openBehavior === "tab") {
-          void this.view.app.workspace.getLeaf("tab").openFile(file);
-        } else if (openBehavior === "active") {
-          void this.view.app.workspace.getLeaf(false).openFile(file);
-        } else {
-          new CardDetailModal(this.view.app, file, this.view).open();
-        }
+        this.openCardFile(file);
       });
 
       // Middle-click → always open in new tab
@@ -479,27 +459,7 @@ export class CardManager {
         .setTitle("Open")
         .setIcon("lucide-file-text")
         .onClick(() => {
-          const openBehavior = this.view.getCardOpenBehavior();
-          if (openBehavior === "split") {
-            if (
-              this.view.detailLeaf &&
-              this.view.isLeafAttached(this.view.detailLeaf)
-            ) {
-              void this.view.detailLeaf.openFile(file);
-            } else {
-              this.view.detailLeaf = this.view.app.workspace.getLeaf(
-                "split",
-                "vertical",
-              );
-              void this.view.detailLeaf.openFile(file);
-            }
-          } else if (openBehavior === "tab") {
-            void this.view.app.workspace.getLeaf("tab").openFile(file);
-          } else if (openBehavior === "active") {
-            void this.view.app.workspace.getLeaf(false).openFile(file);
-          } else {
-            new CardDetailModal(this.view.app, file, this.view).open();
-          }
+          this.openCardFile(file);
         });
     });
 
@@ -648,16 +608,10 @@ export class CardManager {
       return;
     }
 
+    // `newItemProperties` and the custom folder are applied centrally by the
+    // KanbanView new-item-menu patch; here we only add the column value and the
+    // drop position.
     const overrides = (fm: Record<string, unknown>) => {
-      const newItemProps = this.view.config?.get("newItemProperties");
-      if (newItemProps && typeof newItemProps === "object") {
-        const props = newItemProps as Record<string, unknown>;
-        for (const k of Object.keys(props)) {
-          if (k !== "__proto__" && k !== "constructor") {
-            fm[k] = props[k];
-          }
-        }
-      }
       this.view.applyGroupByValue(fm, groupByProp, columnName);
       fm[ORDER_PROPERTY] = targetOrder;
     };
@@ -666,6 +620,31 @@ export class CardManager {
       await this.view.createFileForView(title, overrides);
     } catch (err) {
       new Notice(`Failed to create card: ${String(err)}`);
+    }
+  }
+
+  /** Open a card's file according to the configured "Open card in" behavior. */
+  public openCardFile(file: TFile): void {
+    const openBehavior = this.view.getCardOpenBehavior();
+    if (openBehavior === "split") {
+      if (
+        this.view.detailLeaf &&
+        this.view.isLeafAttached(this.view.detailLeaf)
+      ) {
+        void this.view.detailLeaf.openFile(file);
+      } else {
+        this.view.detailLeaf = this.view.app.workspace.getLeaf(
+          "split",
+          "vertical",
+        );
+        void this.view.detailLeaf.openFile(file);
+      }
+    } else if (openBehavior === "tab") {
+      void this.view.app.workspace.getLeaf("tab").openFile(file);
+    } else if (openBehavior === "active") {
+      void this.view.app.workspace.getLeaf(false).openFile(file);
+    } else {
+      new CardDetailModal(this.view.app, file, this.view).open();
     }
   }
 

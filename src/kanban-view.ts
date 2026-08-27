@@ -10,6 +10,7 @@ import {
   NullValue,
   QueryController,
   setIcon,
+  moment,
   TFile,
   WorkspaceLeaf,
 } from "obsidian";
@@ -36,13 +37,28 @@ import {
   CONFIG_KEY_WIP_LIMITS,
   CONFIG_KEY_COVER_PROPERTY,
   CONFIG_KEY_ADD_TO_TOP,
+  CONFIG_KEY_NEW_CARD_FOLDER,
 } from "./constants";
+import { DateFormatter, resolveFolderTemplate } from "./date-tokens";
 
 interface BoardScrollState {
   boardLeft: number;
   viewTop: number;
   columnTops: Map<string, number>;
 }
+
+/**
+ * The (internal) Bases "new item" menu reachable via
+ * `queryController.newItemMenu`. Only the bits we touch are typed.
+ */
+interface NewItemMenu {
+  open: (...args: unknown[]) => unknown;
+  query?: { newItemFolder?: string };
+}
+
+type PatchedOpen = ((...args: unknown[]) => unknown) & {
+  __baseBoardPatched?: boolean;
+};
 
 // ---------------------------------------------------------------------------
 //  Kanban View
@@ -104,7 +120,9 @@ export class KanbanView extends BasesView implements HoverParent {
     });
   }
 
-  onload(): void {}
+  onload(): void {
+    this.patchNewItemMenu();
+  }
 
   onunload(): void {
     this.dragDropManager.destroy();
@@ -116,6 +134,8 @@ export class KanbanView extends BasesView implements HoverParent {
   }
 
   public onDataUpdated(): void {
+    // The toolbar (and its new-item menu) may not exist yet at onload.
+    this.patchNewItemMenu();
     if (this.isUpdating) {
       this.pendingDataRender = true;
       return;
@@ -178,6 +198,13 @@ export class KanbanView extends BasesView implements HoverParent {
             displayName: "Add new cards to top",
             default: false,
           },
+          {
+            key: CONFIG_KEY_NEW_CARD_FOLDER,
+            type: "text" as const,
+            displayName: "New card folder",
+            default: "",
+            placeholder: "E.g. Tasks/YYYY/MM",
+          },
         ],
       },
     ];
@@ -185,6 +212,86 @@ export class KanbanView extends BasesView implements HoverParent {
 
   public isAddNewCardsToTop(): boolean {
     return !!this.config?.get(CONFIG_KEY_ADD_TO_TOP);
+  }
+
+  /**
+   * The folder new card files should be created in, resolved against the
+   * current date: path segments that are bare moment formats (`Tasks/YYYY/MM`)
+   * are formatted, everything else stays literal, then each segment is
+   * sanitised. Empty string means "no override" — defer to Bases
+   * (`newItemFolder` / default new-note location).
+   */
+  public getNewCardFolder(): string {
+    const raw = this.config?.get(CONFIG_KEY_NEW_CARD_FOLDER);
+    if (typeof raw !== "string" || raw.trim() === "") return "";
+    // Obsidian's `moment` export is typed as a namespace; it is callable at runtime.
+    const now = (moment as unknown as () => DateFormatter)();
+    return resolveFolderTemplate(raw.trim(), now);
+  }
+
+  /**
+   * Merge the board's configured `newItemProperties` into new-card frontmatter.
+   * Bases only derives frontmatter from the view filters, so this is where the
+   * `newItemProperties` config key is honoured.
+   */
+  private applyNewItemProperties(fm: Record<string, unknown>): void {
+    const props = this.config?.get("newItemProperties");
+    if (!props || typeof props !== "object") return;
+    const record = props as Record<string, unknown>;
+    for (const key of Object.keys(record)) {
+      if (key !== "__proto__" && key !== "constructor") fm[key] = record[key];
+    }
+  }
+
+  /**
+   * Bases routes every "new card" action — the toolbar "+" button, the "New
+   * item" command and our own "+ Add card" (via `createFileForView`) — through
+   * `queryController.newItemMenu.open()`. Wrap that instance method so each new
+   * card also picks up `newItemProperties` and, when set, the custom "New card
+   * folder" path, while keeping the filter-derived frontmatter Bases adds itself.
+   */
+  private patchNewItemMenu(): void {
+    const menu = (
+      this as unknown as {
+        queryController?: {
+          newItemMenu?: NewItemMenu;
+        };
+      }
+    ).queryController?.newItemMenu;
+    if (!menu || typeof menu.open !== "function") return;
+    // Tag the wrapper so a rebuilt menu (fresh `open`) gets re-patched.
+    if ((menu.open as PatchedOpen).__baseBoardPatched) return;
+
+    const originalOpen = menu.open.bind(menu);
+
+    const patched = ((...args: unknown[]): unknown => {
+      const baseFileName = args[0] as string | undefined;
+      const processor = args[1] as
+        ((fm: Record<string, unknown>) => void) | undefined;
+      const wrapped = (fm: Record<string, unknown>) => {
+        this.applyNewItemProperties(fm);
+        processor?.(fm);
+      };
+
+      const folder = this.getNewCardFolder();
+      const query = menu.query;
+      if (!folder || !query) {
+        return originalOpen(baseFileName, wrapped);
+      }
+
+      // `open()` reads `query.newItemFolder` synchronously (and creates that
+      // folder itself); swap ours in for the call, then restore.
+      const previous = query.newItemFolder;
+      query.newItemFolder = folder;
+      try {
+        return originalOpen(baseFileName, wrapped);
+      } finally {
+        query.newItemFolder = previous;
+      }
+    }) as PatchedOpen;
+    patched.__baseBoardPatched = true;
+
+    menu.open = patched;
   }
 
   // ---------------------------------------------------------------------------

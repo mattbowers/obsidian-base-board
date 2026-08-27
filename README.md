@@ -64,6 +64,21 @@ views:
 
 This ensures new cards automatically receive required frontmatter fields, keeping them visible on filtered boards.
 
+### New Card Folder
+
+By default new cards are created in the folder Bases decides on (`newItemFolder`, or your vault's default location for new notes). Set **New card folder** in the view options menu to send them somewhere else, with daily-note style date subfolders:
+
+| Template | Resolves to |
+| --- | --- |
+| `Tasks` | `Tasks/` |
+| `Tasks/YYYY/MM` | `Tasks/2026/08/` |
+| `Journal/YYYY-MM-DD` | `Journal/2026-08-27/` |
+| `Tasks/gggg-[W]ww` | `Tasks/2026-W35/` |
+
+A path segment made up only of [moment.js format](https://momentjs.com/docs/#/displaying/format/) letters (`YYYY`, `MM`, …) is formatted with the current date; any other segment (`Tasks`, `Inbox`) stays literal. Wrap literal words that look like format tokens in brackets — `[May]`, `[Archive]/YYYY`.
+
+This applies to every way of adding a card — the column **"+ Add card"** button and the Bases toolbar **+** button. It acts as a per-render `newItemFolder`, so Bases still creates the note (filter-derived frontmatter and `newItemTemplate` keep working) and creates the folder for you. Give the full path from the vault root and make sure it still matches your board's filters, or new cards won't appear on the board.
+
 ## Installation
 
 ### From Obsidian Community Plugins

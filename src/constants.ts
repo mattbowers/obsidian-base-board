@@ -29,6 +29,13 @@ export const CONFIG_KEY_COVER_PROPERTY = "cardCoverProperty";
 export const CONFIG_KEY_ADD_TO_TOP = "newCardsToTop";
 
 /**
+ * Key used by BasesViewConfig.set/get to persist the folder (path template) new
+ * card files are created in. Path segments that are bare moment.js formats
+ * (e.g. `Tasks/YYYY/MM`) are resolved against the current date.
+ */
+export const CONFIG_KEY_NEW_CARD_FOLDER = "newCardFolder";
+
+/**
  * Regex matching characters that are invalid in file/folder names.
  * Used when sanitizing user input before creating vault items.
  */
