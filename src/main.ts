@@ -12,7 +12,12 @@ import { sanitizeFilename } from "./constants";
 import { CreateBoardModal, BoardConfig } from "./modals";
 import { updateBaseFolderReferences } from "./folder-rename";
 import { DateFormatter, resolveFolderTemplate } from "./date-tokens";
-import { promoteTaskExtension } from "./promote-task";
+import {
+  promoteAllCheckboxTasks,
+  promoteCheckboxTask,
+  promoteTaskExtension,
+} from "./promote-task";
+import { hasCheckboxTask, TASK_LINE_DETECT_RE } from "./task-line";
 import { BaseBoardSettingTab } from "./settings";
 
 /** Per-base column configuration */
@@ -68,6 +73,36 @@ export default class BaseBoardPlugin extends Plugin {
         new CreateBoardModal(this.app, (config) => {
           void this.createBoard(config);
         }).open();
+      },
+    });
+
+    // -- Command: Promote checkbox task on the current line ------------------
+    this.addCommand({
+      id: "promote-checkbox-task",
+      name: "Promote checkbox task on current line",
+      editorCheckCallback: (checking, editor, ctx) => {
+        const file = ctx.file;
+        if (!file) return false;
+        const lineIndex = editor.getCursor().line;
+        if (!TASK_LINE_DETECT_RE.test(editor.getLine(lineIndex))) return false;
+        if (!checking) {
+          void promoteCheckboxTask(this, editor, file, lineIndex);
+        }
+        return true;
+      },
+    });
+
+    // -- Command: Promote every checkbox task in the note -------------------
+    this.addCommand({
+      id: "promote-all-checkbox-tasks",
+      name: "Promote all checkbox tasks in note",
+      editorCheckCallback: (checking, editor, ctx) => {
+        const file = ctx.file;
+        if (!file || !hasCheckboxTask(editor.getValue())) return false;
+        if (!checking) {
+          void promoteAllCheckboxTasks(this, editor, file);
+        }
+        return true;
       },
     });
 

@@ -18,6 +18,16 @@ const TASK_LINE_RE = /^(\s*(?:>\s*)*(?:[-*+]|\d+[.)])\s+)\[(.)\]\s+(.*)$/;
 export const TASK_LINE_DETECT_RE =
   /^\s*(?:>\s*)*(?:[-*+]|\d+[.)])\s+\[.\]\s+\S/;
 
+const TASK_LINE_DETECT_RE_MULTILINE = new RegExp(
+  TASK_LINE_DETECT_RE.source,
+  "m",
+);
+
+/** Whether `text` (a whole document) contains at least one checkbox task line. */
+export function hasCheckboxTask(text: string): boolean {
+  return TASK_LINE_DETECT_RE_MULTILINE.test(text);
+}
+
 export interface ParsedTaskLine {
   /** Indentation + blockquote markers + list bullet + trailing space. */
   prefix: string;

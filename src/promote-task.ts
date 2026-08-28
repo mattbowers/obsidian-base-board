@@ -7,7 +7,7 @@ import {
   type ViewUpdate,
   WidgetType,
 } from "@codemirror/view";
-import { editorInfoField, Notice, setIcon, TFile } from "obsidian";
+import { Editor, editorInfoField, Notice, setIcon, TFile } from "obsidian";
 import type BaseBoardPlugin from "./main";
 import { sanitizeFilename } from "./constants";
 import {
@@ -17,31 +17,36 @@ import {
   taskContentToTitle,
 } from "./task-line";
 
+interface PromoteOptions {
+  /** Suppress the per-task success / "nothing to promote" notices (batch mode). */
+  silent?: boolean;
+}
+
 /**
  * Promote the checkbox task on `lineIndex` to a standalone task note:
  *
  *  - creates `<task folder>/<title>.md` with `type: Task` and a `status` derived
  *    from the checkbox marker,
  *  - rewrites the source line as a plain bullet linking to the new note.
+ *
+ * Returns the created note, or null when the line isn't a promotable task or
+ * creation failed.
  */
 export async function promoteCheckboxTask(
   plugin: BaseBoardPlugin,
-  view: EditorView,
+  editor: Editor,
+  sourceFile: TFile,
   lineIndex: number,
-): Promise<void> {
-  const info = view.state.field(editorInfoField, false);
-  const sourceFile = info?.file;
-  const editor = info?.editor;
-  if (!sourceFile || !editor) return;
-
+  options: PromoteOptions = {},
+): Promise<TFile | null> {
   const originalLine = editor.getLine(lineIndex);
   const parsed = parseTaskLine(originalLine);
-  if (!parsed) return;
+  if (!parsed) return null;
 
   const title = taskContentToTitle(parsed.content);
   if (!title) {
-    new Notice("Nothing to promote on this line.");
-    return;
+    if (!options.silent) new Notice("Nothing to promote on this line.");
+    return null;
   }
 
   const { app } = plugin;
@@ -66,7 +71,7 @@ export async function promoteCheckboxTask(
     file = await app.vault.create(path, "");
   } catch (err) {
     new Notice(`Failed to create task note — ${String(err)}`);
-    return;
+    return null;
   }
 
   await app.fileManager.processFrontMatter(
@@ -81,8 +86,10 @@ export async function promoteCheckboxTask(
   // line if it still holds the task we parsed.
   if (editor.getLine(lineIndex) !== originalLine) {
     await app.fileManager.trashFile(file).catch(() => undefined);
-    new Notice("The task line changed while the note was being created.");
-    return;
+    if (!options.silent) {
+      new Notice("The task line changed while the note was being created.");
+    }
+    return null;
   }
 
   const alias = title === file.basename ? undefined : title;
@@ -94,7 +101,35 @@ export async function promoteCheckboxTask(
   );
   editor.setLine(lineIndex, `${parsed.prefix}${link}`);
 
-  new Notice(`Promoted to task note "${file.basename}".`);
+  if (!options.silent) {
+    new Notice(`Promoted to task note "${file.basename}".`);
+  }
+  return file;
+}
+
+/** Promote every checkbox task line in the note; reports a single summary. */
+export async function promoteAllCheckboxTasks(
+  plugin: BaseBoardPlugin,
+  editor: Editor,
+  sourceFile: TFile,
+): Promise<void> {
+  // Promoting rewrites a line in place (line count is unchanged), so indices
+  // stay valid for the whole pass.
+  const lineCount = editor.lineCount();
+  let promoted = 0;
+  for (let i = 0; i < lineCount; i++) {
+    if (!TASK_LINE_DETECT_RE.test(editor.getLine(i))) continue;
+    const file = await promoteCheckboxTask(plugin, editor, sourceFile, i, {
+      silent: true,
+    });
+    if (file) promoted++;
+  }
+
+  new Notice(
+    promoted === 0
+      ? "No checkbox tasks to promote."
+      : `Promoted ${promoted} task${promoted === 1 ? "" : "s"} to notes.`,
+  );
 }
 
 /** Small icon shown at the end of a checkbox line. */
@@ -118,9 +153,11 @@ class PromoteTaskWidget extends WidgetType {
     el.addEventListener("mousedown", (evt) => {
       evt.preventDefault();
       evt.stopPropagation();
+      const info = view.state.field(editorInfoField, false);
+      if (!info?.editor || !info.file) return;
       const pos = view.posAtDOM(el);
       const lineIndex = view.state.doc.lineAt(pos).number - 1;
-      void promoteCheckboxTask(this.plugin, view, lineIndex);
+      void promoteCheckboxTask(this.plugin, info.editor, info.file, lineIndex);
     });
 
     return el;

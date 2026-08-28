@@ -83,7 +83,7 @@ For board add-card actions this behaves as a per-render `newItemFolder`, so Base
 
 ### Promote Checkbox Tasks
 
-While editing a note, a small icon appears at the end of every checkbox line. Clicking it:
+While editing a note, a small icon appears at the end of every checkbox line. Clicking it (or running the **Promote checkbox task on current line** command; **Promote all checkbox tasks in note** does the whole note at once):
 
 1. Creates a task note in your [**Task folder**](#task-folder) with frontmatter `type: Task` and a `status` derived from the checkbox marker — `[ ]` → `Todo`, `[x]` → `Done`, `[-]` → `Cancelled`, `[>]` → `Waiting` (any other marker → `Todo`).
 2. Rewrites the source line as a plain bullet linking to the new note (`- [ ] Buy milk` → `- [[Buy milk]]`).

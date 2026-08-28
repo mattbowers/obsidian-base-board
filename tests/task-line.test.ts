@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   checkboxStatus,
+  hasCheckboxTask,
   parseTaskLine,
   TASK_LINE_DETECT_RE,
   taskContentToTitle,
@@ -78,5 +79,17 @@ describe("TASK_LINE_DETECT_RE", () => {
   it("does not match empty checkboxes or plain bullets", () => {
     expect(TASK_LINE_DETECT_RE.test("- [ ] ")).toBe(false);
     expect(TASK_LINE_DETECT_RE.test("- plain")).toBe(false);
+  });
+});
+
+describe("hasCheckboxTask", () => {
+  it("finds a task line anywhere in a document", () => {
+    expect(hasCheckboxTask("# Note\n\nsome text\n- [ ] a task\nmore")).toBe(
+      true,
+    );
+  });
+
+  it("is false when there are no task lines", () => {
+    expect(hasCheckboxTask("# Note\n\n- a bullet\n- [[a link]]\n")).toBe(false);
   });
 });
