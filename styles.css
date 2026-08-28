@@ -306,10 +306,10 @@
 .base-board-cards {
   flex: 1 1 auto;
   overflow-y: auto;
-  padding: 8px;
+  padding: 6px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
   min-height: 40px;
   transition: background-color 0.2s ease;
 }
@@ -432,7 +432,7 @@
   background-color: var(--background-primary);
   border: 1px solid var(--background-modifier-border);
   border-radius: var(--radius-s);
-  padding: 10px 12px;
+  padding: 7px 10px;
   cursor: pointer;
   transition:
     box-shadow 0.2s ease,
@@ -443,8 +443,8 @@
 }
 
 .base-board-card-thumbnail {
-  margin: -10px -12px 8px;
-  height: 120px;
+  margin: -7px -10px 7px;
+  height: 100px;
   overflow: hidden;
   border-radius: var(--radius-s) var(--radius-s) 0 0;
   border-bottom: 1px solid var(--background-modifier-border);
@@ -520,19 +520,19 @@
 .base-board-card-title {
   font-size: var(--font-ui-small);
   font-weight: var(--font-normal);
-  line-height: 1.35;
-  margin-bottom: 4px;
-  padding-right: 24px; /* leave room for the edit button */
+  line-height: 1.3;
+  margin-bottom: 3px;
+  padding-right: 22px; /* leave room for the edit button */
 }
 
 /* ---- Card edit button ---- */
 
 .base-board-card-edit-btn {
   position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 24px;
-  height: 24px;
+  top: 5px;
+  right: 5px;
+  width: 22px;
+  height: 22px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -566,8 +566,8 @@
   box-sizing: border-box;
   font-family: inherit;
   font-size: var(--font-ui-small);
-  font-weight: var(--font-medium);
-  line-height: 1.35;
+  font-weight: var(--font-normal);
+  line-height: 1.3;
   padding: 1px 2px;
   background-color: var(--background-primary);
   color: var(--text-normal);
@@ -592,7 +592,7 @@
   color: var(--text-muted);
   background-color: var(--background-secondary);
   border-radius: var(--radius-s);
-  padding: 2px 6px;
+  padding: 1px 5px;
   max-width: 180px;
   overflow: hidden;
 }
@@ -643,7 +643,7 @@
   font-size: var(--font-ui-smaller);
   color: var(--text-accent);
   border-radius: var(--radius-s);
-  padding: 2px 6px;
+  padding: 1px 5px;
   cursor: pointer;
   white-space: nowrap;
   user-select: none;
@@ -837,12 +837,12 @@
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
-  margin-bottom: 8px;
+  margin-bottom: 5px;
 }
 
 .base-board-card-tag {
   font-size: 10px;
-  padding: 2px 6px;
+  padding: 1px 5px;
   border-radius: 4px;
   background-color: var(--tag-color, var(--background-modifier-hover));
   color: var(--text-normal);
