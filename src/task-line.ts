@@ -43,9 +43,28 @@ export function parseTaskLine(line: string): ParsedTaskLine | null {
   return { prefix: match[1], mark: match[2], content: match[3] };
 }
 
-/** Turn the text after a checkbox into a note title (drops a trailing block id). */
+/**
+ * Turn the text after a checkbox into a plain-text note title.
+ *
+ * Link syntax embedded in the task is a hazard: it would leak `[`, `]` and `|`
+ * into the new note's filename and break the generated wikilink's alias (a `]]`
+ * or `|` inside the alias terminates the link early). So `[[target|alias]]`,
+ * `[[target#heading]]`, `[text](url)` and `![[embed]]` are reduced to their
+ * display text, any stray `[` / `]` / `|` is dropped, and a trailing `^block-id`
+ * is removed.
+ */
 export function taskContentToTitle(content: string): string {
-  return content.replace(/\s*\^[A-Za-z0-9-]+\s*$/, "").trim();
+  return content
+    .replace(/\s*\^[A-Za-z0-9-]+\s*$/, "")
+    .replace(
+      /!?\[\[([^\]|#]+)(?:#[^\]|]+)?(?:\|([^\]]+))?\]\]/g,
+      (_match, target: string, alias?: string) =>
+        alias ?? target.split("/").pop()?.replace(/\.md$/i, "") ?? target,
+    )
+    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/[[\]|]/g, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
 }
 
 /**

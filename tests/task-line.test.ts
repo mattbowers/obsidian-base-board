@@ -67,6 +67,41 @@ describe("taskContentToTitle", () => {
   it("drops a trailing block id", () => {
     expect(taskContentToTitle("Buy milk ^abc123")).toBe("Buy milk");
   });
+
+  it("reduces an embedded wikilink to its display text", () => {
+    expect(taskContentToTitle("[[Design doc]]")).toBe("Design doc");
+    expect(taskContentToTitle("[[folder/Design doc]]")).toBe("Design doc");
+    expect(taskContentToTitle("[[folder/Note|Alias]]")).toBe("Alias");
+    expect(taskContentToTitle("[[Note#Heading]]")).toBe("Note");
+    expect(taskContentToTitle("[[Note#Heading|Alias]]")).toBe("Alias");
+    expect(taskContentToTitle("![[embed]]")).toBe("embed");
+  });
+
+  it("reduces an inline wikilink within a longer task", () => {
+    expect(taskContentToTitle("Review [[Design doc]] with the team")).toBe(
+      "Review Design doc with the team",
+    );
+  });
+
+  it("reduces a markdown link to its text", () => {
+    expect(taskContentToTitle("[Buy milk](https://example.com)")).toBe(
+      "Buy milk",
+    );
+    expect(taskContentToTitle("See [the spec](spec.md) first")).toBe(
+      "See the spec first",
+    );
+  });
+
+  it("drops any stray brackets or pipes that would break the alias", () => {
+    expect(taskContentToTitle("Weird | pipe [and] brackets")).toBe(
+      "Weird pipe and brackets",
+    );
+  });
+
+  it("is empty when the task is only an empty or broken link", () => {
+    expect(taskContentToTitle("[[]]")).toBe("");
+    expect(taskContentToTitle("[]()")).toBe("");
+  });
 });
 
 describe("TASK_LINE_DETECT_RE", () => {

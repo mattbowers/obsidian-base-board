@@ -88,6 +88,8 @@ While editing a note, a small icon appears at the end of every checkbox line. Cl
 1. Creates a task note in your [**Task folder**](#task-folder) with frontmatter `type: Task` and a `status` derived from the checkbox marker — `[ ]` → `Todo`, `[x]` → `Done`, `[-]` → `Cancelled`, `[>]` → `Waiting` (any other marker → `Todo`).
 2. Rewrites the source line as a plain bullet linking to the new note (`- [ ] Buy milk` → `- [[Buy milk]]`).
 
+The task title is taken from the line text; any links it already contains (`[[wikilinks]]`, `[markdown](links)`, embeds) are reduced to their display text so the new note's name and link stay valid.
+
 ## Installation
 
 ### From Obsidian Community Plugins
