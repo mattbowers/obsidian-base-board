@@ -170,6 +170,21 @@ export class DragDropManager {
       z-index: 9999;
     `;
 
+    // Read the computed background to use concrete values for the ghost.
+    // Cards are transparent until hover, so fall back to the theme surface.
+    const compStyles = getComputedStyle(cardEl);
+    const bodyStyles = getComputedStyle(activeDocument.body);
+    const isTransparent = (c: string): boolean =>
+      !c || c === "transparent" || c === "rgba(0, 0, 0, 0)";
+    const cardBg = isTransparent(compStyles.backgroundColor)
+      ? bodyStyles.getPropertyValue("--background-primary") || "#1e1e2e"
+      : compStyles.backgroundColor;
+    const borderColor = isTransparent(compStyles.borderColor)
+      ? bodyStyles.getPropertyValue("--background-modifier-border") || "#383850"
+      : compStyles.borderColor;
+    const accentColor =
+      bodyStyles.getPropertyValue("--interactive-accent") || "#7c3aed";
+
     if (isMultiDrag) {
       // Stacked cards effect: offset shadow cards behind the main card
       const stackContainer = ghostWrapper.createDiv();
@@ -177,15 +192,6 @@ export class DragDropManager {
         position: relative;
         width: ${cardRect.width}px;
       `;
-
-      // Read the computed background to use concrete values for the ghost
-      const compStyles = getComputedStyle(cardEl);
-      const cardBg = compStyles.backgroundColor || "#1e1e2e";
-      const borderColor = compStyles.borderColor || "#383850";
-      const accentColor =
-        getComputedStyle(activeDocument.body).getPropertyValue(
-          "--interactive-accent",
-        ) || "#7c3aed";
 
       // Shadow layers (bottom-most first) — visible offset behind the main card
       const layerCount = Math.min(dragCount - 1, 2);
@@ -249,6 +255,8 @@ export class DragDropManager {
         box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
         opacity: 0.85;
         border-radius: var(--radius-s, 6px);
+        background: ${cardBg};
+        border: 1px solid ${borderColor};
       `;
       ghostWrapper.appendChild(ghost);
     }

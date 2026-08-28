@@ -429,8 +429,9 @@
 
 .base-board-card {
   position: relative;
-  background-color: var(--background-primary);
-  border: 1px solid var(--background-modifier-border);
+  /* Border and background stay hidden until hover (and in special states). */
+  background-color: transparent;
+  border: 1px solid transparent;
   border-radius: var(--radius-s);
   padding: 7px 10px;
   cursor: pointer;
@@ -438,6 +439,7 @@
     box-shadow 0.2s ease,
     transform 0.2s ease,
     opacity 0.2s ease,
+    background-color 0.15s ease,
     border-color 0.15s ease;
   user-select: none;
 }
@@ -464,8 +466,9 @@
 }
 
 .base-board-card:hover {
+  background-color: var(--background-primary);
+  border-color: var(--background-modifier-border);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  border-color: var(--interactive-accent);
 }
 
 .base-board-card:active {
@@ -496,11 +499,13 @@
   .base-board-card:hover:not(.base-board-card--selected):not(
     .base-board-card--just-dropped
   ) {
-  border-color: var(--background-modifier-border);
+  background-color: transparent;
+  border-color: transparent;
   box-shadow: none;
 }
 
 .base-board-card--just-dropped {
+  background-color: var(--background-primary);
   border-color: var(--interactive-accent);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
