@@ -519,7 +519,7 @@
 
 .base-board-card-title {
   font-size: var(--font-ui-small);
-  font-weight: var(--font-medium);
+  font-weight: var(--font-normal);
   line-height: 1.35;
   margin-bottom: 4px;
   padding-right: 24px; /* leave room for the edit button */
