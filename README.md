@@ -25,6 +25,8 @@
 - **WIP Limits**: Set per-column work-in-progress limits via the column header context menu. Columns that exceed their limit are highlighted in red.
 - **Collapsible Columns**: Collapse any column to save space; the state is remembered per board.
 - **Card Cover Images**: Display cover images at the top of cards by specifying an image frontmatter property (e.g., `cover: "[[image.png]]"` or a web URL). Defaults to the `cover` property.
+- **Checklist Progress**: Cards show a `done/total` bar when the note body contains checkbox tasks.
+- **Promote Checkbox Tasks**: Turn an inline `- [ ]` task into a linked task note from the editor.
 - **Data First**: All changes are written directly to your Markdown files.
 
 ## Usage
@@ -64,9 +66,9 @@ views:
 
 This ensures new cards automatically receive required frontmatter fields, keeping them visible on filtered boards.
 
-### New Card Folder
+### Task Folder
 
-By default new cards are created in the folder Bases decides on (`newItemFolder`, or your vault's default location for new notes). Set **New card folder** in the view options menu to send them somewhere else, with daily-note style date subfolders:
+Set **Task folder** in the plugin settings (Settings → Base Board) to control where new task notes are created — both from a board's add-card buttons and from [promoted checkbox tasks](#promote-checkbox-tasks). It supports daily-note style date subfolders:
 
 | Template | Resolves to |
 | --- | --- |
@@ -77,7 +79,14 @@ By default new cards are created in the folder Bases decides on (`newItemFolder`
 
 A path segment made up only of [moment.js format](https://momentjs.com/docs/#/displaying/format/) letters (`YYYY`, `MM`, …) is formatted with the current date; any other segment (`Tasks`, `Inbox`) stays literal. Wrap literal words that look like format tokens in brackets — `[May]`, `[Archive]/YYYY`.
 
-This applies to every way of adding a card — the column **"+ Add card"** button and the Bases toolbar **+** button. It acts as a per-render `newItemFolder`, so Bases still creates the note (filter-derived frontmatter and `newItemTemplate` keep working) and creates the folder for you. Give the full path from the vault root and make sure it still matches your board's filters, or new cards won't appear on the board.
+For board add-card actions this behaves as a per-render `newItemFolder`, so Bases still creates the note (filter-derived frontmatter and `newItemTemplate` keep working) and creates the folder for you. Give the full path from the vault root and make sure it still matches your board's filters, or new cards won't appear on the board. Leave it blank to fall back to Bases' default location.
+
+### Promote Checkbox Tasks
+
+While editing a note, a small icon appears at the end of every checkbox line. Clicking it:
+
+1. Creates a task note in your [**Task folder**](#task-folder) with frontmatter `type: Task` and a `status` derived from the checkbox marker — `[ ]` → `Todo`, `[x]` → `Done`, `[-]` → `Cancelled`, `[>]` → `Waiting` (any other marker → `Todo`).
+2. Rewrites the source line as a plain bullet linking to the new note (`- [ ] Buy milk` → `- [[Buy milk]]`).
 
 ## Installation
 

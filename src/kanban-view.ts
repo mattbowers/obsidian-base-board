@@ -10,7 +10,6 @@ import {
   NullValue,
   QueryController,
   setIcon,
-  moment,
   TFile,
   WorkspaceLeaf,
 } from "obsidian";
@@ -39,7 +38,6 @@ import {
   CONFIG_KEY_ADD_TO_TOP,
   CONFIG_KEY_NEW_CARD_FOLDER,
 } from "./constants";
-import { DateFormatter, resolveFolderTemplate } from "./date-tokens";
 
 interface BoardScrollState {
   boardLeft: number;
@@ -212,13 +210,6 @@ export class KanbanView extends BasesView implements HoverParent {
             displayName: "Add new cards to top",
             default: false,
           },
-          {
-            key: CONFIG_KEY_NEW_CARD_FOLDER,
-            type: "text" as const,
-            displayName: "New card folder",
-            default: "",
-            placeholder: "E.g. Tasks/YYYY/MM",
-          },
         ],
       },
     ];
@@ -229,18 +220,18 @@ export class KanbanView extends BasesView implements HoverParent {
   }
 
   /**
-   * The folder new card files should be created in, resolved against the
-   * current date: path segments that are bare moment formats (`Tasks/YYYY/MM`)
-   * are formatted, everything else stays literal, then each segment is
-   * sanitised. Empty string means "no override" — defer to Bases
-   * (`newItemFolder` / default new-note location).
+   * The folder new card files should be created in — the plugin-wide "Task
+   * folder" setting (daily-note style date templates supported), falling back
+   * to the legacy per-board `newCardFolder` view config. Empty string means
+   * "no override" — defer to Bases (`newItemFolder` / default new-note location).
    */
   public getNewCardFolder(): string {
-    const raw = this.config?.get(CONFIG_KEY_NEW_CARD_FOLDER);
-    if (typeof raw !== "string" || raw.trim() === "") return "";
-    // Obsidian's `moment` export is typed as a namespace; it is callable at runtime.
-    const now = (moment as unknown as () => DateFormatter)();
-    return resolveFolderTemplate(raw.trim(), now);
+    const fromSettings = this.plugin.resolveTaskFolder();
+    if (fromSettings) return fromSettings;
+    const legacy = this.config?.get(CONFIG_KEY_NEW_CARD_FOLDER);
+    return typeof legacy === "string"
+      ? this.plugin.resolveFolderPath(legacy)
+      : "";
   }
 
   /**

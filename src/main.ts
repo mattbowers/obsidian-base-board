@@ -5,11 +5,15 @@ import {
   TFile,
   TFolder,
   TAbstractFile,
+  moment,
 } from "obsidian";
 import { KanbanView } from "./kanban-view";
 import { sanitizeFilename } from "./constants";
 import { CreateBoardModal, BoardConfig } from "./modals";
 import { updateBaseFolderReferences } from "./folder-rename";
+import { DateFormatter, resolveFolderTemplate } from "./date-tokens";
+import { promoteTaskExtension } from "./promote-task";
+import { BaseBoardSettingTab } from "./settings";
 
 /** Per-base column configuration */
 export interface ColumnConfig {
@@ -18,10 +22,13 @@ export interface ColumnConfig {
 
 export interface PluginData {
   columnConfigs: Record<string, ColumnConfig>;
+  /** Daily-note style folder template for new task notes (e.g. `Tasks/YYYY/MM`). */
+  taskFolder: string;
 }
 
 const DEFAULT_DATA: PluginData = {
   columnConfigs: {},
+  taskFolder: "",
 };
 
 // ---------------------------------------------------------------------------
@@ -47,6 +54,11 @@ export default class BaseBoardPlugin extends Plugin {
         new KanbanView(controller, containerEl, this),
       options: () => KanbanView.getViewOptions(),
     });
+
+    this.addSettingTab(new BaseBoardSettingTab(this.app, this));
+
+    // Icon at the end of checkbox lines → promote the task to a task note.
+    this.registerEditorExtension(promoteTaskExtension(this));
 
     // -- Command: Create new board --------------------------------------------
     this.addCommand({
@@ -246,6 +258,21 @@ export default class BaseBoardPlugin extends Plugin {
     }
   }
 
+  // -- Task folder ----------------------------------------------------------
+
+  /** Resolve a daily-note style folder template against the current date. */
+  resolveFolderPath(template: string | undefined): string {
+    const raw = template?.trim();
+    if (!raw) return "";
+    const now = (moment as unknown as () => DateFormatter)();
+    return resolveFolderTemplate(raw, now);
+  }
+
+  /** The configured task folder for this moment, or "" when unset. */
+  resolveTaskFolder(): string {
+    return this.resolveFolderPath(this.data_.taskFolder);
+  }
+
   // -- Column config helpers --------------------------------------------------
 
   getColumnConfig(baseId: string): ColumnConfig | null {
@@ -263,6 +290,7 @@ export default class BaseBoardPlugin extends Plugin {
     const saved = (await this.loadData()) as PluginData | null | undefined;
     this.data_ = Object.assign({}, DEFAULT_DATA, saved ?? {});
     if (!this.data_.columnConfigs) this.data_.columnConfigs = {};
+    if (typeof this.data_.taskFolder !== "string") this.data_.taskFolder = "";
   }
 
   async savePluginData(): Promise<void> {

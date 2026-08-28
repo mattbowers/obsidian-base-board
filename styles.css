@@ -1078,3 +1078,31 @@
 .is-tablet .base-board-card-edit-btn {
   opacity: 0.6;
 }
+
+/* ---- Promote checkbox task to task note (editor icon) ---- */
+
+.base-board-promote-task {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.4em;
+  color: var(--text-faint);
+  cursor: pointer;
+  vertical-align: middle;
+  opacity: 0.55;
+  transition:
+    opacity 0.1s ease,
+    color 0.1s ease;
+}
+
+.cm-line:hover .base-board-promote-task {
+  opacity: 1;
+}
+
+.base-board-promote-task:hover {
+  color: var(--text-accent);
+}
+
+.base-board-promote-task svg {
+  width: 0.9em;
+  height: 0.9em;
+}
