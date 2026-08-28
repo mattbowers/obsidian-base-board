@@ -279,6 +279,12 @@ export class CardManager {
       this.showCardActionMenu(editBtn, filePath, titleEl);
     });
 
+    // ---- Checklist progress ----
+    if (file instanceof TFile) {
+      const progress = this.getTaskProgress(file);
+      if (progress) this.renderTaskProgress(cardEl, progress);
+    }
+
     // ---- Property chips ----
     const propsEl = cardEl.createDiv({ cls: "base-board-card-props" });
     const groupByProp = this.view.getGroupByProperty();
@@ -353,6 +359,49 @@ export class CardManager {
     }
   }
 
+  /**
+   * Count task list items (`- [ ]` / `- [x]`) in the note body via the
+   * metadata cache. A `task` of `" "` is incomplete, any other character is
+   * complete. Returns null when the note contains no tasks.
+   */
+  private getTaskProgress(file: TFile): { done: number; total: number } | null {
+    const items = this.view.app.metadataCache.getFileCache(file)?.listItems;
+    if (!items) return null;
+    let done = 0;
+    let total = 0;
+    for (const item of items) {
+      if (item.task === undefined) continue;
+      total++;
+      if (item.task !== " ") done++;
+    }
+    return total > 0 ? { done, total } : null;
+  }
+
+  /** Render the "3/5" checklist progress row (icon + count + mini bar). */
+  private renderTaskProgress(
+    cardEl: HTMLElement,
+    progress: { done: number; total: number },
+  ): void {
+    const { done, total } = progress;
+    const complete = done === total;
+
+    const el = cardEl.createDiv({ cls: "base-board-card-progress" });
+    el.toggleClass("base-board-card-progress--done", complete);
+    el.setAttribute("aria-label", `${done} of ${total} tasks complete`);
+
+    const icon = el.createSpan({ cls: "base-board-card-progress-icon" });
+    setIcon(icon, complete ? "lucide-check-square" : "lucide-square");
+
+    el.createSpan({
+      cls: "base-board-card-progress-count",
+      text: `${done}/${total}`,
+    });
+
+    const bar = el.createDiv({ cls: "base-board-card-progress-bar" });
+    const fill = bar.createDiv({ cls: "base-board-card-progress-fill" });
+    fill.style.setProperty("width", `${Math.round((done / total) * 100)}%`);
+  }
+
   private getRenderVersion(entry: BasesEntry): string {
     const file = entry.file;
     const groupByProp = this.view.getGroupByProperty();
@@ -384,6 +433,8 @@ export class CardManager {
       resolvedFile instanceof TFile && coverProperty
         ? this.getCardCoverSrc(resolvedFile, coverProperty)
         : null;
+    const taskProgress =
+      resolvedFile instanceof TFile ? this.getTaskProgress(resolvedFile) : null;
     const titleProperty = this.view.config.get("cardTitleProperty");
     const titleValue =
       typeof titleProperty === "string"
@@ -407,6 +458,7 @@ export class CardManager {
       visibleProperties,
       tags,
       tagColors: this.view.tags.getColors(),
+      taskProgress,
     });
   }
 

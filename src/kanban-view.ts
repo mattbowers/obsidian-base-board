@@ -122,6 +122,20 @@ export class KanbanView extends BasesView implements HoverParent {
 
   onload(): void {
     this.patchNewItemMenu();
+
+    // Card content derived from the note body (tags, checklist progress) isn't
+    // part of the Bases query, so a body-only edit may not notify the view.
+    // Re-render when a file currently on the board changes.
+    this.registerEvent(
+      this.app.metadataCache.on("changed", (file) => {
+        if (
+          !this.isUpdating &&
+          this.findCardColumn(this.currentGroups, file.path) !== null
+        ) {
+          this.scheduleRender();
+        }
+      }),
+    );
   }
 
   onunload(): void {

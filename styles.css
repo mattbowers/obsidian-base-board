@@ -581,6 +581,57 @@
   outline: none;
 }
 
+/* ---- Card checklist progress ---- */
+
+.base-board-card-progress {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 4px 0 2px;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+}
+
+.base-board-card-progress-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.base-board-card-progress-icon svg {
+  width: 12px;
+  height: 12px;
+}
+
+.base-board-card-progress-count {
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.base-board-card-progress-bar {
+  flex: 1 1 auto;
+  height: 4px;
+  min-width: 24px;
+  border-radius: 2px;
+  background-color: var(--background-modifier-border);
+  overflow: hidden;
+}
+
+.base-board-card-progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  background-color: var(--text-accent);
+  transition: width 0.2s ease;
+}
+
+.base-board-card-progress--done {
+  color: var(--color-green, var(--text-success));
+}
+
+.base-board-card-progress--done .base-board-card-progress-fill {
+  background-color: var(--color-green, var(--text-success));
+}
+
 /* ---- Card property chips ---- */
 
 .base-board-card-props {
