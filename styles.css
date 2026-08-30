@@ -1106,3 +1106,47 @@
   width: 0.9em;
   height: 0.9em;
 }
+
+/* ---- Promoted task-note status icon (editor) ---- */
+/* Colours mirror how the Minimal theme tints the matching checkbox markers. */
+
+.base-board-task-status {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 0.35em;
+  color: var(--text-muted);
+  vertical-align: middle;
+}
+
+.base-board-task-status svg {
+  width: 0.95em;
+  height: 0.95em;
+}
+
+.base-board-task-status[data-status="Done" i],
+.base-board-task-status[data-status="Complete" i],
+.base-board-task-status[data-status="Completed" i] {
+  color: var(--checkbox-color, var(--color-accent));
+}
+
+.base-board-task-status[data-status="Cancelled" i],
+.base-board-task-status[data-status="Canceled" i],
+.base-board-task-status[data-status="Waiting" i],
+.base-board-task-status[data-status="Forwarded" i],
+.base-board-task-status[data-status="Deferred" i],
+.base-board-task-status[data-status="Rescheduled" i],
+.base-board-task-status[data-status="Scheduled" i] {
+  color: var(--text-faint);
+}
+
+.base-board-task-status[data-status="Important" i],
+.base-board-task-status[data-status="Urgent" i],
+.base-board-task-status[data-status="Blocked" i] {
+  color: var(--color-orange);
+}
+
+.base-board-task-status[data-status="Question" i],
+.base-board-task-status[data-status="Star" i],
+.base-board-task-status[data-status="Starred" i] {
+  color: var(--color-yellow);
+}

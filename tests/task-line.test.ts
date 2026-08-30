@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   checkboxStatus,
   hasCheckboxTask,
+  parsePromotedTaskLine,
   parseTaskLine,
+  statusIcon,
   TASK_LINE_DETECT_RE,
   taskContentToTitle,
 } from "../src/task-line";
@@ -114,6 +116,46 @@ describe("TASK_LINE_DETECT_RE", () => {
   it("does not match empty checkboxes or plain bullets", () => {
     expect(TASK_LINE_DETECT_RE.test("- [ ] ")).toBe(false);
     expect(TASK_LINE_DETECT_RE.test("- plain")).toBe(false);
+  });
+});
+
+describe("parsePromotedTaskLine", () => {
+  it("matches a bullet whose whole content is a wikilink", () => {
+    expect(parsePromotedTaskLine("- [[Buy milk]]")).toEqual({
+      prefix: "- ",
+      target: "Buy milk",
+    });
+    expect(parsePromotedTaskLine("  * [[folder/Buy milk|Buy milk]]")).toEqual({
+      prefix: "  * ",
+      target: "folder/Buy milk",
+    });
+    expect(parsePromotedTaskLine("> 1. [[Note#Heading]]  ")).toEqual({
+      prefix: "> 1. ",
+      target: "Note",
+    });
+  });
+
+  it("rejects checkboxes, embeds, prose and multi-link lines", () => {
+    expect(parsePromotedTaskLine("- [ ] Buy milk")).toBeNull();
+    expect(parsePromotedTaskLine("- ![[Buy milk]]")).toBeNull();
+    expect(parsePromotedTaskLine("- see [[Buy milk]] later")).toBeNull();
+    expect(parsePromotedTaskLine("- [[a]] [[b]]")).toBeNull();
+    expect(parsePromotedTaskLine("[[Buy milk]]")).toBeNull();
+    expect(parsePromotedTaskLine("- [[]]")).toBeNull();
+  });
+});
+
+describe("statusIcon", () => {
+  it("maps statuses to the Minimal-theme checkbox equivalents", () => {
+    expect(statusIcon("Todo")).toBe("lucide-square");
+    expect(statusIcon("Done")).toBe("lucide-check-square");
+    expect(statusIcon("cancelled")).toBe("lucide-minus-square");
+    expect(statusIcon("  Waiting ")).toBe("lucide-send");
+    expect(statusIcon("In Progress")).toBe("lucide-square-slash");
+  });
+
+  it("falls back to the empty checkbox for anything else", () => {
+    expect(statusIcon("Someday")).toBe("lucide-square");
   });
 });
 

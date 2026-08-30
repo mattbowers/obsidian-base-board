@@ -83,3 +83,73 @@ const CHECKBOX_STATUS: Record<string, string> = {
 export function checkboxStatus(mark: string): string {
   return CHECKBOX_STATUS[mark] ?? "Todo";
 }
+
+/**
+ * A line this plugin produces when promoting a checkbox: a list bullet whose
+ * entire content is a single wikilink (optionally with a `#heading` and/or
+ * `|alias`). Embeds (`![[…]]`) are deliberately excluded.
+ *
+ * `prefix` is the indentation + blockquote markers + list bullet (so a caller
+ * can offset a decoration past it); `target` is the link path with any subpath
+ * and alias stripped.
+ */
+const PROMOTED_TASK_LINE_RE =
+  /^(\s*(?:>\s*)*(?:[-*+]|\d+[.)])\s+)\[\[([^\]|#]+)(?:#[^\]|]+)?(?:\|[^\]]+)?\]\]\s*$/;
+
+export interface PromotedTaskLine {
+  prefix: string;
+  target: string;
+}
+
+export function parsePromotedTaskLine(line: string): PromotedTaskLine | null {
+  const match = PROMOTED_TASK_LINE_RE.exec(line);
+  if (!match) return null;
+  const target = match[2].trim();
+  return target ? { prefix: match[1], target } : null;
+}
+
+/**
+ * Lucide icon name representing a task-note `status` frontmatter value, chosen
+ * to line up with how the Minimal theme renders the equivalent checkbox marker
+ * (`[ ]`, `[x]`, `[-]`, `[>]`, `[/]`, `[<]`, `[?]`, `[!]`, `[*]`). The match is
+ * case-insensitive; an unrecognised status falls back to the empty checkbox.
+ */
+const STATUS_ICON: Record<string, string> = {
+  // [ ] — open task
+  todo: "lucide-square",
+  "to do": "lucide-square",
+  "to-do": "lucide-square",
+  backlog: "lucide-square",
+  // [x] — done
+  done: "lucide-check-square",
+  complete: "lucide-check-square",
+  completed: "lucide-check-square",
+  // [-] — cancelled (Minimal draws a minus, faint + struck through)
+  cancelled: "lucide-minus-square",
+  canceled: "lucide-minus-square",
+  // [>] — forwarded / deferred (Minimal draws a paper plane, faint)
+  waiting: "lucide-send",
+  forwarded: "lucide-send",
+  deferred: "lucide-send",
+  rescheduled: "lucide-send",
+  // [/] — in progress (Minimal draws a half-filled box)
+  "in progress": "lucide-square-slash",
+  "in-progress": "lucide-square-slash",
+  doing: "lucide-square-slash",
+  started: "lucide-square-slash",
+  // [<] — scheduled
+  scheduled: "lucide-calendar-clock",
+  // [?] — question
+  question: "lucide-help-circle",
+  // [!] — important / blocked
+  important: "lucide-alert-triangle",
+  urgent: "lucide-alert-triangle",
+  blocked: "lucide-alert-triangle",
+  // [*] — starred
+  star: "lucide-star",
+  starred: "lucide-star",
+};
+
+export function statusIcon(status: string): string {
+  return STATUS_ICON[status.trim().toLowerCase()] ?? "lucide-square";
+}
