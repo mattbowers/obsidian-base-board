@@ -1,9 +1,10 @@
 {
-	"id": "base-board",
-	"name": "Base Board",
+	"id": "base-board-dev",
+	"name": "Base Board (dev fork)",
 	"version": "2.5.1",
 	"minAppVersion": "1.10.2",
-	"description": "Organize notes into Kanban boards using frontmatter properties. Drag and drop cards between columns powered by Bases.",
-	"author": "Michael DeRazon",
+	"description": "[FORK] Organize notes into Kanban boards using frontmatter properties. Drag and drop cards between columns powered by Bases.",
+	"author": "Matt Bowers (fork of Michael DeRazon)",
+	"authorUrl": "https://github.com/mattbowers/obsidian-base-board",
 	"isDesktopOnly": false
 }
