@@ -45,6 +45,12 @@ By default, card interaction respects native Obsidian conventions:
 
 You can customize the default click behavior (e.g. to always open in a floating modal, split pane, or new tab) via the board toolbar under the view options menu.
 
+### Adding Cards
+
+Use the **"+ Add card"** buttons to create a card. You type the title inline, and by default Base Board hands off to Bases' new-note dialog to finish creating the note.
+
+If you'd rather skip that dialog, enable **"Skip new note dialog when adding cards"** in the board toolbar's view options. The note is written straight to the vault (using the board's card folder / `newItemFolder`, plus any `newItemProperties`) without being opened. The entry field then behaves like a quick-add list: **Enter** creates the card and reopens an empty field just below it so you can keep going, **Esc** cancels the current field without creating anything, and clicking away commits whatever you've typed and closes. Note that a configured `newItemTemplate`, and frontmatter Bases would otherwise infer from the base's filters, are not applied in this mode — put anything you need into `newItemProperties`.
+
 ### Card Ordering
 
 Base Board uses manual drag order so cards remain exactly where you place them. This order is stored in each note's `kanban_order` property and overrides the native Bases **Sort by** setting.
@@ -85,7 +91,7 @@ For board add-card actions this behaves as a per-render `newItemFolder`, so Base
 
 While editing a note, a small icon appears at the end of every checkbox line. Clicking it (or running the **Promote checkbox task on current line** command; **Promote all checkbox tasks in note** does the whole note at once):
 
-1. Creates a task note in your [**Task folder**](#task-folder) with frontmatter `type: Task` and a `status` derived from the checkbox marker — `[ ]` → `Todo`, `[x]` → `Done`, `[-]` → `Cancelled`, `[>]` → `Waiting` (any other marker → `Todo`).
+1. Creates a task note in your [**Task folder**](#task-folder) with frontmatter `type: Task` and a `status` derived from the checkbox marker — `[ ]` → `Todo`, `[x]` → `Done`, `[-]` → `Cancelled`, `[>]` → `Waiting`, `[/]` → `Doing` (any other marker → `Todo`).
 2. Rewrites the source line as a plain bullet linking to the new note (`- [ ] Buy milk` → `- [[Buy milk]]`).
 
 The task title is taken from the line text; any links it already contains (`[[wikilinks]]`, `[markdown](links)`, embeds) are reduced to their display text so the new note's name and link stay valid.

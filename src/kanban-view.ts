@@ -9,6 +9,7 @@ import {
   NumberValue,
   NullValue,
   QueryController,
+  normalizePath,
   setIcon,
   TFile,
   WorkspaceLeaf,
@@ -37,6 +38,8 @@ import {
   CONFIG_KEY_COVER_PROPERTY,
   CONFIG_KEY_ADD_TO_TOP,
   CONFIG_KEY_NEW_CARD_FOLDER,
+  CONFIG_KEY_SKIP_NEW_CARD_DIALOG,
+  sanitizeFilename,
 } from "./constants";
 
 interface BoardScrollState {
@@ -83,6 +86,14 @@ export class KanbanView extends BasesView implements HoverParent {
   private isFirstRender = true;
   /** Debounce timer for render calls. */
   private renderTimer: ReturnType<typeof setTimeout> | null = null;
+  /**
+   * Column whose inline "+ Add card" field is open in rapid-entry mode. A
+   * rebuild re-attaches the field (see `ColumnManager.renderColumn`) instead of
+   * dropping it, and the field's blur handler ignores the blur a rebuild causes.
+   */
+  public activeInlineAddColumn: string | null = null;
+  /** True only while `render()` is tearing down / rebuilding the board. */
+  public isRendering = false;
   /** Local drop intent retained until Bases publishes the matching groups. */
   private optimisticMoves = new Map<string, string>();
   private optimisticColumnOrders = new Map<string, string[]>();
@@ -210,6 +221,12 @@ export class KanbanView extends BasesView implements HoverParent {
             displayName: "Add new cards to top",
             default: false,
           },
+          {
+            key: CONFIG_KEY_SKIP_NEW_CARD_DIALOG,
+            type: "toggle" as const,
+            displayName: "Skip new note dialog when adding cards",
+            default: false,
+          },
         ],
       },
     ];
@@ -217,6 +234,15 @@ export class KanbanView extends BasesView implements HoverParent {
 
   public isAddNewCardsToTop(): boolean {
     return !!this.config?.get(CONFIG_KEY_ADD_TO_TOP);
+  }
+
+  /**
+   * When true, the inline "+ Add card" flow writes the note straight to the
+   * vault once a title is typed, instead of handing off to Bases'
+   * `createFileForView` (which always surfaces the new-note dialog).
+   */
+  public isSkipNewCardDialog(): boolean {
+    return !!this.config?.get(CONFIG_KEY_SKIP_NEW_CARD_DIALOG);
   }
 
   /**
@@ -239,7 +265,7 @@ export class KanbanView extends BasesView implements HoverParent {
    * Bases only derives frontmatter from the view filters, so this is where the
    * `newItemProperties` config key is honoured.
    */
-  private applyNewItemProperties(fm: Record<string, unknown>): void {
+  public applyNewItemProperties(fm: Record<string, unknown>): void {
     const props = this.config?.get("newItemProperties");
     if (!props || typeof props !== "object") return;
     const record = props as Record<string, unknown>;
@@ -297,6 +323,68 @@ export class KanbanView extends BasesView implements HoverParent {
     patched.__baseBoardPatched = true;
 
     menu.open = patched;
+  }
+
+  /**
+   * Parent folder for a directly-created card note: the board's configured card
+   * folder, else Bases' own `newItemFolder`, else the vault's default location
+   * for new notes. An empty string means "vault root".
+   */
+  private getNewCardParentPath(): string {
+    const configured = this.getNewCardFolder();
+    if (configured) return configured;
+
+    const menuFolder = (
+      this as unknown as {
+        queryController?: { newItemMenu?: NewItemMenu };
+      }
+    ).queryController?.newItemMenu?.query?.newItemFolder;
+    if (typeof menuFolder === "string" && menuFolder.trim()) return menuFolder;
+
+    const basePath = this.data?.data?.[0]?.file?.path ?? "";
+    const parentPath = this.app.fileManager.getNewFileParent(basePath).path;
+    return parentPath === "/" ? "" : parentPath;
+  }
+
+  /**
+   * Create a new card note directly, bypassing Bases' `createFileForView` (which
+   * always shows the new-note dialog). Mirrors what the `newItemMenu` patch
+   * contributes — the custom folder and `newItemProperties` — then runs the
+   * caller's frontmatter overrides.
+   *
+   * Frontmatter that Bases derives from the base's own filters, and any
+   * `newItemTemplate`, are NOT applied here; boards that rely on those should
+   * cover them via `newItemProperties` or leave this option off.
+   */
+  public async createCardFileDirect(
+    baseFileName: string,
+    frontmatterProcessor: (fm: Record<string, unknown>) => void,
+  ): Promise<TFile> {
+    const parent = this.getNewCardParentPath();
+    if (parent && !this.app.vault.getAbstractFileByPath(parent)) {
+      try {
+        await this.app.vault.createFolder(parent);
+      } catch {
+        // Tolerate a concurrent create.
+      }
+    }
+
+    const stem = sanitizeFilename(baseFileName).trim() || "Untitled";
+    const dir = parent ? `${parent}/` : "";
+    let path = normalizePath(`${dir}${stem}.md`);
+    for (let i = 1; this.app.vault.getAbstractFileByPath(path); i++) {
+      path = normalizePath(`${dir}${stem} ${i}.md`);
+    }
+
+    const file = await this.app.vault.create(path, "");
+    await this.app.fileManager.processFrontMatter(
+      file,
+      (fm: Record<string, unknown>) => {
+        this.applyNewItemProperties(fm);
+        frontmatterProcessor(fm);
+      },
+    );
+    return file;
   }
 
   // ---------------------------------------------------------------------------
@@ -674,6 +762,17 @@ export class KanbanView extends BasesView implements HoverParent {
   public columnElCache = new Map<string, HTMLElement>();
 
   public render(): void {
+    // `isRendering` lets an open rapid-entry field tell a rebuild-induced blur
+    // apart from the user leaving the field.
+    this.isRendering = true;
+    try {
+      this.renderInternal();
+    } finally {
+      this.isRendering = false;
+    }
+  }
+
+  private renderInternal(): void {
     this.ensureFileNameInOrder();
     this.selectedCards.clear();
     const scrollState = this.captureScrollState();
@@ -731,6 +830,7 @@ export class KanbanView extends BasesView implements HoverParent {
       msgEl.createEl("p", {
         text: 'Set "group by" in the sort menu to organize cards into columns.',
       });
+      this.activeInlineAddColumn = null;
       return;
     }
 
@@ -760,6 +860,21 @@ export class KanbanView extends BasesView implements HoverParent {
     this.columnManager.renderAddColumnButton(boardEl);
     this.dragDropManager.initBoard(boardEl);
     this.restoreScrollState(boardEl, scrollState);
+
+    // Restored scroll can leave a re-seated rapid-entry field out of view; if
+    // its column didn't survive the rebuild, drop the reference.
+    if (this.activeInlineAddColumn !== null) {
+      const field = boardEl.querySelector(
+        `.base-board-column[data-column-name="${CSS.escape(
+          this.activeInlineAddColumn,
+        )}"] .base-board-add-card-input`,
+      );
+      if (field) {
+        field.scrollIntoView({ block: "nearest" });
+      } else {
+        this.activeInlineAddColumn = null;
+      }
+    }
   }
 
   private captureScrollState(): BoardScrollState {

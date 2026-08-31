@@ -156,14 +156,20 @@ export class ColumnManager {
       e.stopPropagation();
       const addToTop = this.view.isAddNewCardsToTop();
       let targetOrder: OrderValue = generateOrderKey(null, null);
+      // Upper bound successive rapid-entry cards must stay under (only when
+      // inserting at the top, ahead of the existing first card).
+      let chainBefore: string | null = null;
       if (sorted.length > 0) {
         const orders = sorted.map((entry) =>
           entry.file?.path ? this.view.getFileOrder(entry.file.path) : null,
         );
         if (orders.every(isOrderKey)) {
-          targetOrder = addToTop
-            ? generateOrderKey(null, orders[0])
-            : generateOrderKey(orders[orders.length - 1], null);
+          if (addToTop) {
+            chainBefore = orders[0];
+            targetOrder = generateOrderKey(null, orders[0]);
+          } else {
+            targetOrder = generateOrderKey(orders[orders.length - 1], null);
+          }
         } else {
           const numericOrders = orders.filter(
             (order): order is number => typeof order === "number",
@@ -177,6 +183,7 @@ export class ColumnManager {
         addCardHeaderBtn,
         columnName,
         targetOrder,
+        chainBefore,
       );
     });
 
@@ -241,6 +248,23 @@ export class ColumnManager {
     cardsEl.querySelectorAll<HTMLElement>(".base-board-card").forEach((el) => {
       if (!visiblePaths.has(el.dataset.filePath ?? "")) el.remove();
     });
+
+    // An open inline "+ Add card" field rides along on the reused card list; a
+    // rebuild leaves it stranded above the cards with the "+" button restored,
+    // so dock it back below them, re-hide the button, and return focus.
+    if (this.view.activeInlineAddColumn === columnName) {
+      const wrapper = cardsEl.querySelector<HTMLElement>(
+        ".base-board-add-card-input-wrapper",
+      );
+      if (wrapper) {
+        cardsEl.appendChild(wrapper);
+        addCardHeaderBtn.classList.add("base-board-hidden");
+        // Scroll is settled at the end of render(); avoid a double jump here.
+        wrapper
+          .querySelector<HTMLInputElement>("input")
+          ?.focus({ preventScroll: true });
+      }
+    }
   }
 
   private showColumnMenu(

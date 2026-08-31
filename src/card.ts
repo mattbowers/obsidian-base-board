@@ -16,7 +16,7 @@ import {
 import { KanbanView } from "./kanban-view";
 import { ORDER_PROPERTY, sanitizeFilename } from "./constants";
 import { relativeLuminance } from "./color-utils";
-import type { OrderValue } from "./order";
+import { generateOrderKey, isOrderKey, type OrderValue } from "./order";
 import { CardDetailModal } from "./card-detail-modal";
 
 const IMAGE_EXTENSIONS = new Set([
@@ -597,10 +597,22 @@ export class CardManager {
     });
   }
 
+  /**
+   * Open an inline text field for creating a card in `columnName`.
+   *
+   * `targetOrder` is the order key for the first card; `chainBefore` is the
+   * upper bound successive cards must stay under (set only when adding to the
+   * top of a column). When the board is configured to skip the new-note dialog
+   * the field survives the re-render that each Enter triggers and drops back
+   * below the freshly added card — as if the user had clicked "+" again — so a
+   * run of cards can be typed straight through. Escape cancels without creating
+   * anything; a plain click away commits whatever was typed and closes.
+   */
   public startInlineCardCreation(
     btnEl: HTMLElement,
     columnName: string,
     targetOrder: OrderValue,
+    chainBefore: string | null = null,
   ): void {
     // Find the cards list for this column.
     // The trigger button may be in the header OR in the footer, so we walk
@@ -610,7 +622,10 @@ export class CardManager {
       (columnEl?.querySelector(".base-board-cards") as HTMLElement | null) ??
       btnEl.parentElement!;
 
+    const rapid = this.view.isSkipNewCardDialog();
+
     btnEl.classList.add("base-board-hidden");
+    this.view.activeInlineAddColumn = columnName;
 
     const inputWrapper = cardsEl.createDiv({
       cls: "base-board-add-card-input-wrapper",
@@ -621,31 +636,66 @@ export class CardManager {
     });
     input.focus();
 
-    let committed = false;
-    const commit = async () => {
-      if (committed) return;
-      committed = true;
-      const name = input.value.trim();
-      inputWrapper.remove();
-      btnEl.classList.remove("base-board-hidden");
-      if (name) {
-        await this.createNewCard(name, columnName, targetOrder);
+    // Each card typed without leaving the field sorts just after the previous
+    // one (still ahead of `chainBefore` when adding to the top).
+    let prevKey: string | null = isOrderKey(targetOrder) ? targetOrder : null;
+    let first = true;
+    const nextOrder = (): OrderValue => {
+      if (first) {
+        first = false;
+        return targetOrder;
       }
+      prevKey = generateOrderKey(prevKey, chainBefore);
+      return prevKey;
+    };
+
+    let closed = false;
+    const close = () => {
+      if (closed) return;
+      closed = true;
+      inputWrapper.remove();
+      // The header (and its button) may have been rebuilt since we hid it.
+      const liveBtn =
+        columnEl?.querySelector<HTMLElement>(".base-board-column-add-card") ??
+        btnEl;
+      liveBtn.classList.remove("base-board-hidden");
+      if (this.view.activeInlineAddColumn === columnName) {
+        this.view.activeInlineAddColumn = null;
+      }
+    };
+
+    const submit = async () => {
+      if (closed) return;
+      const name = input.value.trim();
+      if (!name) return;
+      input.value = "";
+      await this.createNewCard(name, columnName, nextOrder());
+      if (!closed) input.focus();
     };
 
     input.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
         e.preventDefault();
-        void commit();
+        const hadText = input.value.trim().length > 0;
+        void submit();
+        if (!rapid) {
+          close();
+        } else if (hadText) {
+          // Show the new card; renderColumn re-seats this field beneath it.
+          this.view.scheduleRender();
+        }
       } else if (e.key === "Escape") {
         e.preventDefault();
-        committed = true;
-        inputWrapper.remove();
-        btnEl.classList.remove("base-board-hidden");
+        close();
       }
     });
     input.addEventListener("blur", () => {
-      void commit();
+      // A board rebuild detaches the field on its way through and blurs it;
+      // that isn't the user leaving, so ignore it and let renderColumn re-seat
+      // and refocus the field.
+      if (this.view.isRendering || !input.isConnected) return;
+      void submit();
+      close();
     });
   }
 
@@ -661,15 +711,19 @@ export class CardManager {
     }
 
     // `newItemProperties` and the custom folder are applied centrally by the
-    // KanbanView new-item-menu patch; here we only add the column value and the
-    // drop position.
+    // KanbanView new-item-menu patch (or createCardFileDirect); here we only add
+    // the column value and the drop position.
     const overrides = (fm: Record<string, unknown>) => {
       this.view.applyGroupByValue(fm, groupByProp, columnName);
       fm[ORDER_PROPERTY] = targetOrder;
     };
 
     try {
-      await this.view.createFileForView(title, overrides);
+      if (this.view.isSkipNewCardDialog()) {
+        await this.view.createCardFileDirect(title, overrides);
+      } else {
+        await this.view.createFileForView(title, overrides);
+      }
     } catch (err) {
       new Notice(`Failed to create card: ${String(err)}`);
     }

@@ -36,6 +36,13 @@ export const CONFIG_KEY_ADD_TO_TOP = "newCardsToTop";
 export const CONFIG_KEY_NEW_CARD_FOLDER = "newCardFolder";
 
 /**
+ * Key used by BasesViewConfig.set/get to persist whether the inline "+ Add card"
+ * flow creates the note directly (skipping Bases' new-note dialog) once a title
+ * has been typed.
+ */
+export const CONFIG_KEY_SKIP_NEW_CARD_DIALOG = "skipNewCardDialog";
+
+/**
  * Regex matching characters that are invalid in file/folder names.
  * Used when sanitizing user input before creating vault items.
  */
