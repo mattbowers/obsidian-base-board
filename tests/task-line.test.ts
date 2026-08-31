@@ -53,10 +53,10 @@ describe("checkboxStatus", () => {
     expect(checkboxStatus("X")).toBe("Done");
     expect(checkboxStatus("-")).toBe("Cancelled");
     expect(checkboxStatus(">")).toBe("Waiting");
+    expect(checkboxStatus("/")).toBe("Doing");
   });
 
   it("treats any other marker as an open task", () => {
-    expect(checkboxStatus("/")).toBe("Todo");
     expect(checkboxStatus("?")).toBe("Todo");
   });
 });

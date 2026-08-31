@@ -69,8 +69,8 @@ export function taskContentToTitle(content: string): string {
 
 /**
  * Map a checkbox marker character to a task-note `status` value.
- * `" "` → Todo, `x`/`X` → Done, `-` → Cancelled, `>` → Waiting; anything else
- * is treated as an open task (`Todo`).
+ * `" "` → Todo, `x`/`X` → Done, `-` → Cancelled, `>` → Waiting, `/` → Doing;
+ * anything else is treated as an open task (`Todo`).
  */
 const CHECKBOX_STATUS: Record<string, string> = {
   " ": "Todo",
@@ -78,6 +78,7 @@ const CHECKBOX_STATUS: Record<string, string> = {
   X: "Done",
   "-": "Cancelled",
   ">": "Waiting",
+  "/": "Doing",
 };
 
 export function checkboxStatus(mark: string): string {
