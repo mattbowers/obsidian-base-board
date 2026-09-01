@@ -23,6 +23,7 @@ import {
 } from "obsidian";
 import type BaseBoardPlugin from "./main";
 import { sanitizeFilename } from "./constants";
+import { inferProject, type ProjectCandidate } from "./project-match";
 import {
   checkboxStatus,
   parsePromotedTaskLine,
@@ -31,6 +32,67 @@ import {
   TASK_LINE_DETECT_RE,
   taskContentToTitle,
 } from "./task-line";
+
+/**
+ * Whether a note's `type` frontmatter includes `value`. `type` may be a
+ * single string, a comma-separated string, or a YAML list — notes commonly
+ * carry more than one type (e.g. `type: [Project, Area]`).
+ */
+function frontmatterHasType(
+  fm: Record<string, unknown> | undefined,
+  value: string,
+): boolean {
+  const type = fm?.type;
+  const types: string[] = Array.isArray(type)
+    ? type.filter((t): t is string => typeof t === "string")
+    : typeof type === "string"
+      ? type.split(",").map((t) => t.trim())
+      : [];
+  return types.some((t) => t.toLowerCase() === value.toLowerCase());
+}
+
+/** All notes whose `type` frontmatter includes `Project`, as match candidates. */
+function findProjectCandidates(plugin: BaseBoardPlugin): ProjectCandidate[] {
+  const candidates: ProjectCandidate[] = [];
+  for (const file of plugin.app.vault.getMarkdownFiles()) {
+    const fm: Record<string, unknown> | undefined =
+      plugin.app.metadataCache.getFileCache(file)?.frontmatter;
+    if (frontmatterHasType(fm, "project")) {
+      candidates.push({ name: file.basename, path: file.path });
+    }
+  }
+  return candidates;
+}
+
+/** The heading of the section containing `lineIndex`, or null above any heading. */
+function sectionHeadingAt(
+  plugin: BaseBoardPlugin,
+  file: TFile,
+  lineIndex: number,
+): string | null {
+  const headings = plugin.app.metadataCache.getFileCache(file)?.headings;
+  if (!headings) return null;
+  let current: string | null = null;
+  for (const heading of headings) {
+    if (heading.position.start.line > lineIndex) break;
+    current = heading.heading;
+  }
+  return current;
+}
+
+/** Immediate parent folder name and nearer-first ancestor folder names above it. */
+function folderContext(path: string): {
+  parentFolder: string | null;
+  ancestorFolders: string[];
+} {
+  const segments = path.split("/");
+  segments.pop(); // filename
+  if (segments.length === 0) return { parentFolder: null, ancestorFolders: [] };
+  return {
+    parentFolder: segments[segments.length - 1],
+    ancestorFolders: segments.slice(0, -1).reverse(),
+  };
+}
 
 interface PromoteOptions {
   /** Suppress the per-task success / "nothing to promote" notices (batch mode). */
@@ -65,6 +127,13 @@ export async function promoteCheckboxTask(
   }
 
   const { app } = plugin;
+
+  const projectMatch = inferProject(findProjectCandidates(plugin), {
+    noteBasename: sourceFile.basename,
+    sectionHeading: sectionHeadingAt(plugin, sourceFile, lineIndex),
+    ...folderContext(sourceFile.path),
+  });
+
   const folder = plugin.resolveTaskFolder();
   if (folder && !app.vault.getAbstractFileByPath(folder)) {
     try {
@@ -89,11 +158,20 @@ export async function promoteCheckboxTask(
     return null;
   }
 
+  const projectFile = projectMatch
+    ? app.vault.getAbstractFileByPath(projectMatch.path)
+    : null;
+  const projectLink =
+    projectFile instanceof TFile
+      ? app.fileManager.generateMarkdownLink(projectFile, file.path)
+      : null;
+
   await app.fileManager.processFrontMatter(
     file,
     (fm: Record<string, unknown>) => {
       fm.type = "Task";
       fm.status = checkboxStatus(parsed.mark);
+      if (projectLink) fm.projects = [projectLink];
     },
   );
 
@@ -249,8 +327,7 @@ function buildDecorations(
 ): DecorationSet {
   const builder = new RangeSetBuilder<Decoration>();
   const { doc } = view.state;
-  const sourcePath =
-    view.state.field(editorInfoField, false)?.file?.path ?? "";
+  const sourcePath = view.state.field(editorInfoField, false)?.file?.path ?? "";
 
   for (const { from, to } of view.visibleRanges) {
     const firstLine = doc.lineAt(from).number;

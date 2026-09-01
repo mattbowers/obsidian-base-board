@@ -96,6 +96,8 @@ While editing a note, a small icon appears at the end of every checkbox line. Cl
 
 The task title is taken from the line text; any links it already contains (`[[wikilinks]]`, `[markdown](links)`, embeds) are reduced to their display text so the new note's name and link stay valid.
 
+If a note with frontmatter `type: Project` matches the task's context, its link is added to the new task note's `projects` field. The match is decided by the first of these clues that hits, in order: the project's name appears in the source note's own filename, in the heading of the section the task lives under, in the source note's parent folder name, or in any folder further up the path. No match leaves `projects` unset.
+
 ## Installation
 
 ### From Obsidian Community Plugins
