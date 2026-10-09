@@ -16,6 +16,7 @@ import {
 import { KanbanView } from "./kanban-view";
 import { ORDER_PROPERTY, sanitizeFilename } from "./constants";
 import { relativeLuminance } from "./color-utils";
+import { isLinkableUrlValue } from "./value-utils";
 import { generateOrderKey, isOrderKey, type OrderValue } from "./order";
 import { CardDetailModal } from "./card-detail-modal";
 
@@ -227,6 +228,19 @@ export class CardManager {
           "base-board-card",
           this.view.app.workspace.getMostRecentLeaf(),
         );
+
+        menu.addSeparator();
+        menu.addItem((item) => {
+          item
+            .setTitle("Delete")
+            .setIcon("lucide-trash-2")
+            .setWarning(true)
+            .onClick(async () => {
+              await this.view.app.fileManager.trashFile(file);
+              new Notice(`Moved "${file.basename}" to trash`);
+            });
+        });
+
         menu.showAtMouseEvent(e);
       });
     }
@@ -481,6 +495,31 @@ export class CardManager {
     if (val && propId?.startsWith("formula.")) {
       valueEl.addClass("base-board-chip-value--formula");
       val.renderTo(valueEl, this.view.app.renderContext);
+    } else if (isLinkableUrlValue(value)) {
+      // URL-valued chips (any safe scheme, e.g. https:// or a custom
+      // protocol like obsidian://) render as clickable links instead of
+      // plain text, matching how native Bases views treat URL properties.
+      const link = valueEl.createEl("a", {
+        text: value,
+        href: value,
+        cls: "external-link",
+      });
+      const openChipUrl = (e: MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation(); // Don't also open the card's note
+        window.open(value);
+      };
+      link.addEventListener("click", openChipUrl);
+      // Middle-click fires auxclick, not click: without this it would both
+      // bubble into the card's open-note-in-tab handler and let Chromium
+      // natively navigate the anchor, bypassing the controlled open above.
+      link.addEventListener("auxclick", (e: MouseEvent) => {
+        if (e.button === 1) {
+          openChipUrl(e);
+        } else {
+          e.stopPropagation();
+        }
+      });
     } else {
       valueEl.setText(value);
     }
@@ -627,9 +666,18 @@ export class CardManager {
     btnEl.classList.add("base-board-hidden");
     this.view.activeInlineAddColumn = columnName;
 
-    const inputWrapper = cardsEl.createDiv({
+    const addToTop = this.view.isAddNewCardsToTop();
+    const inputWrapper = createDiv({
       cls: "base-board-add-card-input-wrapper",
     });
+    if (addToTop) {
+      cardsEl.prepend(inputWrapper);
+      cardsEl.scrollTop = 0;
+    } else {
+      cardsEl.appendChild(inputWrapper);
+      cardsEl.scrollTop = cardsEl.scrollHeight;
+    }
+
     const input = inputWrapper.createEl("input", {
       cls: "base-board-add-card-input",
       attr: { type: "text", placeholder: "Card title…" },

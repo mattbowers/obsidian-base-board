@@ -40,6 +40,7 @@ import {
   CONFIG_KEY_NEW_CARD_FOLDER,
   CONFIG_KEY_SKIP_NEW_CARD_DIALOG,
   sanitizeFilename,
+  VIEW_TYPE,
 } from "./constants";
 
 interface BoardScrollState {
@@ -66,7 +67,7 @@ type PatchedOpen = ((...args: unknown[]) => unknown) & {
 // ---------------------------------------------------------------------------
 
 export class KanbanView extends BasesView implements HoverParent {
-  type = "kanban";
+  type = VIEW_TYPE;
   // Required by HoverParent — Obsidian manages the popover lifecycle.
   hoverPopover: HoverPopover | null = null;
   scrollEl: HTMLElement;
