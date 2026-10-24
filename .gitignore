@@ -14,3 +14,4 @@ data.json
 .idea/
 *.swp
 *.swo
+.DS_Store
